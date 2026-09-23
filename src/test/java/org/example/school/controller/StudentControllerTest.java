@@ -8,6 +8,10 @@ import org.example.school.service.TeacherService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
@@ -56,14 +60,14 @@ class StudentControllerTest {
     void saveStudentInvalidAgeReturns400() {
         //given
         String body = """
-        {
-          "firstName": "Jane",
-          "lastName": "Smith",
-          "age": 15,
-          "email": "jane.smith@example.com",
-          "fieldOfStudy": "Fizyka"
-        }
-        """;
+                {
+                  "firstName": "Jane",
+                  "lastName": "Smith",
+                  "age": 15,
+                  "email": "jane.smith@example.com",
+                  "fieldOfStudy": "Fizyka"
+                }
+                """;
         String message = "Musi mieć przynajmniej 19 lat";
 
         //when
@@ -87,14 +91,14 @@ class StudentControllerTest {
     void saveStudentCorrectDataReturns201AndJSONStudent() {
         //given
         String body = """
-        {
-          "firstName": "Jane",
-          "lastName": "Smith",
-          "age": 25,
-          "email": "jane.smith@example.com",
-          "fieldOfStudy": "Fizyka"
-        }
-        """;
+                {
+                  "firstName": "Jane",
+                  "lastName": "Smith",
+                  "age": 25,
+                  "email": "jane.smith@example.com",
+                  "fieldOfStudy": "Fizyka"
+                }
+                """;
 
         StudentResponse response = new StudentResponse(
                 1L, "Jane", "Smith", 25, "jane.smith@example.com", "Fizyka", List.of());
@@ -113,16 +117,16 @@ class StudentControllerTest {
                 .hasStatus(HttpStatus.CREATED)
                 .bodyJson()
                 .isLenientlyEqualTo("""
-                {
-                  "id": 1,
-                  "firstName": "Jane",
-                  "lastName": "Smith",
-                  "age": 25,
-                  "email": "jane.smith@example.com",
-                  "fieldOfStudy": "Fizyka",
-                  "teachers": []
-                }
-                """);
+                        {
+                          "id": 1,
+                          "firstName": "Jane",
+                          "lastName": "Smith",
+                          "age": 25,
+                          "email": "jane.smith@example.com",
+                          "fieldOfStudy": "Fizyka",
+                          "teachers": []
+                        }
+                        """);
 
         verify(studentService).save(new StudentRequest("Jane", "Smith", 25, "jane.smith@example.com", "Fizyka"));
     }
@@ -147,14 +151,14 @@ class StudentControllerTest {
     void saveStudentInvalidJSONReturns400() {
         //given
         String body = """
-        {
-          "firstName": "Jane",
-          "lastName": Smith,
-          "age": 25,
-          "email": "jane.smith@example.com",
-          "fieldOfStudy": "Fizyka"
-        }
-        """;
+                {
+                  "firstName": "Jane",
+                  "lastName": Smith,
+                  "age": 25,
+                  "email": "jane.smith@example.com",
+                  "fieldOfStudy": "Fizyka"
+                }
+                """;
         String message = "Nieprawidłowy format żądania";
 
         //when
@@ -173,4 +177,67 @@ class StudentControllerTest {
                 .isEqualTo(message);
         verifyNoInteractions(studentService);
     }
+
+    @Test
+    void findAllPageableTwoStudentsReturns200AndJSONStudents() {
+        //given
+        StudentResponse jane = new StudentResponse(
+                1L, "Jane", "Smith", 25, "jane.smith@example.com", "Fizyka", List.of());
+        StudentResponse john = new StudentResponse(
+                2L, "John", "Newton", 27, "john.newton@example.com", "Biologia", List.of());
+
+        Page<StudentResponse> page = new PageImpl<>(
+                List.of(jane, john),
+                PageRequest.of(0, 2),
+                5);
+
+        when(studentService.findAllPageable(any())).thenReturn(page);
+
+        //when
+        MvcTestResult result = mvc.get()
+                .uri("/api/students")
+                .accept(MediaType.APPLICATION_JSON)
+                .exchange();
+
+        //then
+        assertThat(result)
+                .hasStatus(HttpStatus.OK)
+                .bodyJson()
+                .extractingPath("$.content[0].firstName")
+                .isEqualTo("Jane");
+
+        assertThat(result)
+                .bodyJson()
+                .extractingPath("$.content[1].firstName")
+                .isEqualTo("John");
+
+        assertThat(result)
+                .bodyJson()
+                .extractingPath("$.totalElements")
+                .isEqualTo(5);
+
+        assertThat(result)
+                .bodyJson()
+                .extractingPath("$.totalPages")
+                .isEqualTo(3);
+    }
+
+    @Test
+    void findAllWithoutParamsPassesDefaultPageableToService() {
+        //given
+        when(studentService.findAllPageable(any())).thenReturn(Page.empty());
+
+        //when
+        MvcTestResult result = mvc.get()
+                .uri("/api/students")
+                .accept(MediaType.APPLICATION_JSON)
+                .exchange();
+
+        //then
+        assertThat(result).hasStatus(HttpStatus.OK);
+
+        verify(studentService).findAllPageable(
+                PageRequest.of(0, 20, Sort.by(Sort.Direction.ASC, "lastName", "firstName")));
+    }
+
 }

@@ -1,5 +1,6 @@
 package org.example.school.controller;
 
+import org.example.school.dto.StudentResponse;
 import org.example.school.dto.TeacherRequest;
 import org.example.school.dto.TeacherResponse;
 import org.example.school.exception.NotFoundException;
@@ -9,6 +10,10 @@ import org.example.school.service.TeacherService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
@@ -203,5 +208,72 @@ class TeacherControllerTest {
                 .asString()
                 .isEqualTo(message);
         verifyNoInteractions(teacherService);
+    }
+
+    @Test
+    void findAllPageableTwoTeachersReturns200AndJSONTeachers() {
+        //given
+        TeacherResponse nick = new TeacherResponse(
+                1L, "Nick", "Novak", 45, "nick.novak@example.com", Subject.FIZYKA, List.of());
+        TeacherResponse sarah = new TeacherResponse(
+                2L, "Sarah", "Black", 37, "sarah.black@example.com", Subject.MATEMATYKA, List.of());
+
+        Page<TeacherResponse> page = new PageImpl<>(
+                List.of(nick, sarah),
+                PageRequest.of(0, 2),
+                5);
+
+        when(teacherService.findAllPageable(any())).thenReturn(page);
+
+        //when
+        MvcTestResult result = mvc.get()
+                .uri("/api/teachers")
+                .accept(MediaType.APPLICATION_JSON)
+                .exchange();
+
+        //then
+        assertThat(result)
+                .hasStatus(HttpStatus.OK)
+                .bodyJson()
+                .extractingPath("$.content[0].firstName")
+                .isEqualTo("Nick");
+
+        assertThat(result)
+                .bodyJson()
+                .extractingPath("$.content[1].firstName")
+                .isEqualTo("Sarah");
+
+        assertThat(result)
+                .bodyJson()
+                .extractingPath("$.content[0].subject")
+                .isEqualTo("FIZYKA");
+
+        assertThat(result)
+                .bodyJson()
+                .extractingPath("$.totalElements")
+                .isEqualTo(5);
+
+        assertThat(result)
+                .bodyJson()
+                .extractingPath("$.totalPages")
+                .isEqualTo(3);
+    }
+
+    @Test
+    void findAllWithoutParamsPassesDefaultPageableToService() {
+        //given
+        when(teacherService.findAllPageable(any())).thenReturn(Page.empty());
+
+        //when
+        MvcTestResult result = mvc.get()
+                .uri("/api/teachers")
+                .accept(MediaType.APPLICATION_JSON)
+                .exchange();
+
+        //then
+        assertThat(result).hasStatus(HttpStatus.OK);
+
+        verify(teacherService).findAllPageable(
+                PageRequest.of(0, 20, Sort.by(Sort.Direction.ASC, "lastName", "firstName")));
     }
 }
