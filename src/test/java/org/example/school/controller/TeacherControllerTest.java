@@ -276,4 +276,40 @@ class TeacherControllerTest {
         verify(teacherService).findAllPageable(
                 PageRequest.of(0, 20, Sort.by(Sort.Direction.ASC, "lastName", "firstName")));
     }
+
+    @Test
+    void searchTwoSearchParamsReturns200() {
+        //given
+        when(teacherService.findByFirstNameAndLastName(any(), any(), any())).thenReturn(Page.empty());
+
+        //when
+        MvcTestResult result = mvc.get()
+                .uri("/api/teachers/search?firstName=Jane&lastName=Smith")
+                .accept(MediaType.APPLICATION_JSON)
+                .exchange();
+
+        //then
+        assertThat(result).hasStatus(HttpStatus.OK);
+
+        verify(teacherService).findByFirstNameAndLastName("Jane", "Smith",
+                PageRequest.of(0, 20, Sort.by(Sort.Direction.ASC, "lastName", "firstName")));
+    }
+
+    @Test
+    void searchDefaultParamsReturns200() {
+        //given
+        when(teacherService.findByFirstNameAndLastName(any(), any(), any())).thenReturn(Page.empty());
+
+        //when
+        MvcTestResult result = mvc.get()
+                .uri("/api/teachers/search")
+                .accept(MediaType.APPLICATION_JSON)
+                .exchange();
+
+        //then
+        assertThat(result).hasStatus(HttpStatus.OK);
+
+        verify(teacherService).findByFirstNameAndLastName("", "",
+                PageRequest.of(0, 20, Sort.by(Sort.Direction.ASC, "lastName", "firstName")));
+    }
 }

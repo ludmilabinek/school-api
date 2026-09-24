@@ -23,6 +23,7 @@ import java.util.List;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -240,4 +241,39 @@ class StudentControllerTest {
                 PageRequest.of(0, 20, Sort.by(Sort.Direction.ASC, "lastName", "firstName")));
     }
 
+    @Test
+    void searchTwoSearchParamsReturns200() {
+        //given
+        when(studentService.findByFirstNameAndLastName(any(), any(), any())).thenReturn(Page.empty());
+
+        //when
+        MvcTestResult result = mvc.get()
+                .uri("/api/students/search?firstName=Jane&lastName=Smith")
+                .accept(MediaType.APPLICATION_JSON)
+                .exchange();
+
+        //then
+        assertThat(result).hasStatus(HttpStatus.OK);
+
+        verify(studentService).findByFirstNameAndLastName("Jane", "Smith",
+                PageRequest.of(0, 20, Sort.by(Sort.Direction.ASC, "lastName", "firstName")));
+    }
+
+    @Test
+    void searchDefaultParamsReturns200() {
+        //given
+        when(studentService.findByFirstNameAndLastName(any(), any(), any())).thenReturn(Page.empty());
+
+        //when
+        MvcTestResult result = mvc.get()
+                .uri("/api/students/search")
+                .accept(MediaType.APPLICATION_JSON)
+                .exchange();
+
+        //then
+        assertThat(result).hasStatus(HttpStatus.OK);
+
+        verify(studentService).findByFirstNameAndLastName("", "",
+                PageRequest.of(0, 20, Sort.by(Sort.Direction.ASC, "lastName", "firstName")));
+    }
 }
