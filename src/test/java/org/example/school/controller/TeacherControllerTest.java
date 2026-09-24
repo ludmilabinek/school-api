@@ -1,8 +1,6 @@
 package org.example.school.controller;
 
-import org.example.school.dto.StudentResponse;
-import org.example.school.dto.TeacherRequest;
-import org.example.school.dto.TeacherResponse;
+import org.example.school.dto.*;
 import org.example.school.exception.NotFoundException;
 import org.example.school.model.Subject;
 import org.example.school.service.StudentService;
@@ -311,5 +309,115 @@ class TeacherControllerTest {
 
         verify(teacherService).findByFirstNameAndLastName("", "",
                 PageRequest.of(0, 20, Sort.by(Sort.Direction.ASC, "lastName", "firstName")));
+    }
+
+    @Test
+    void updateCorrectDataReturns200() {
+        //given
+        String body = """
+                {
+                  "firstName": "Jane",
+                  "lastName": "Smith",
+                  "age": 45,
+                  "email": "jane.smith@example.com",
+                  "subject": "MATEMATYKA"
+                }
+                """;
+
+        TeacherResponse response = new TeacherResponse(
+                53L, "Jane", "Smith", 45, "jane.smith@example.com", Subject.MATEMATYKA,
+                List.of(new StudentSummary(17L, "Nick", "Polanski")));
+
+        when(teacherService.updateTeacher(any(Long.class),any(TeacherRequest.class))).thenReturn(response);
+
+        //when
+        MvcTestResult result = mvc.put()
+                .uri("/api/teachers/{teacherId}", 53L)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(body)
+                .exchange();
+
+        //then
+        assertThat(result)
+                .hasStatus(HttpStatus.OK)
+                .bodyJson()
+                .isLenientlyEqualTo("""
+                        {
+                          "id": 53,
+                          "firstName": "Jane",
+                          "lastName": "Smith",
+                          "age": 45,
+                          "email": "jane.smith@example.com",
+                          "subject": "MATEMATYKA",
+                          "students": [{
+                            "id":17,
+                            "firstName": "Nick",
+                            "lastName": "Polanski"}]
+                        }
+                        """);
+
+        verify(teacherService).updateTeacher(53L,new TeacherRequest("Jane", "Smith", 45, "jane.smith@example.com", Subject.MATEMATYKA));
+    }
+
+    @Test
+    void updateInvalidJSONReturns400() {
+        //given
+        String body = """
+                {
+                  "firstName": "Jane",
+                  "lastName": "Smith",
+                  "age": 37
+                  "email": "jane.smith@example.com",
+                  "subject": "MATEMATYKA"
+                }
+                """;
+        String message = "Nieprawidłowy format żądania";
+
+        //when
+        MvcTestResult result = mvc.put()
+                .uri("/api/teachers/{teachreId}", 53L)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(body)
+                .exchange();
+
+        //then
+        assertThat(result)
+                .hasStatus(HttpStatus.BAD_REQUEST)
+                .bodyJson()
+                .extractingPath("$.message")
+                .asString()
+                .isEqualTo(message);
+        verifyNoInteractions(teacherService);
+    }
+
+    @Test
+    void updateStudentNotFoundReturns404() {
+        //given
+        String body = """
+                {
+                  "firstName": "Jane",
+                  "lastName": "Smith",
+                  "age": 37,
+                  "email": "jane.smith@example.com",
+                  "subject": "MATEMATYKA"
+                }
+                """;
+        String message = "Teacher not found";
+        when(teacherService.updateTeacher(any(Long.class), any(TeacherRequest.class))).thenThrow(new NotFoundException(message));
+
+        //when
+        MvcTestResult result = mvc.put()
+                .uri("/api/teachers/{teacherId}", 53L)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(body)
+                .exchange();
+
+        //then
+        assertThat(result)
+                .hasStatus(HttpStatus.NOT_FOUND)
+                .bodyJson()
+                .extractingPath("$.message")
+                .asString()
+                .isEqualTo(message);
     }
 }

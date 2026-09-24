@@ -1,7 +1,6 @@
 package org.example.school.controller;
 
-import org.example.school.dto.StudentRequest;
-import org.example.school.dto.StudentResponse;
+import org.example.school.dto.*;
 import org.example.school.exception.NotFoundException;
 import org.example.school.service.StudentService;
 import org.example.school.service.TeacherService;
@@ -23,7 +22,6 @@ import java.util.List;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -275,5 +273,115 @@ class StudentControllerTest {
 
         verify(studentService).findByFirstNameAndLastName("", "",
                 PageRequest.of(0, 20, Sort.by(Sort.Direction.ASC, "lastName", "firstName")));
+    }
+
+    @Test
+    void updateCorrectDataReturns200() {
+        //given
+        String body = """
+                {
+                  "firstName": "Jane",
+                  "lastName": "Smith",
+                  "age": 25,
+                  "email": "jane.smith@example.com",
+                  "fieldOfStudy": "Fizyka"
+                }
+                """;
+
+        StudentResponse response = new StudentResponse(
+                53L, "Jane", "Smith", 25, "jane.smith@example.com", "Fizyka",
+                List.of(new TeacherSummary(17L, "Nick", "Polanski")));
+
+        when(studentService.updateStudent(any(Long.class),any(StudentRequest.class))).thenReturn(response);
+
+        //when
+        MvcTestResult result = mvc.put()
+                .uri("/api/students/{studentId}", 53L)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(body)
+                .exchange();
+
+        //then
+        assertThat(result)
+                .hasStatus(HttpStatus.OK)
+                .bodyJson()
+                .isLenientlyEqualTo("""
+                        {
+                          "id": 53,
+                          "firstName": "Jane",
+                          "lastName": "Smith",
+                          "age": 25,
+                          "email": "jane.smith@example.com",
+                          "fieldOfStudy": "Fizyka",
+                          "teachers": [{
+                            "id":17,
+                            "firstName": "Nick",
+                            "lastName": "Polanski"}]
+                        }
+                        """);
+
+        verify(studentService).updateStudent(53L,new StudentRequest("Jane", "Smith", 25, "jane.smith@example.com", "Fizyka"));
+    }
+
+    @Test
+    void updateInvalidJSONReturns400() {
+        //given
+        String body = """
+                {
+                  "firstName": "Jane",
+                  "lastName": "Smith",
+                  "age": 37
+                  "email": "jane.smith@example.com",
+                  "fieldOfStudy": "Fizyka"
+                }
+                """;
+        String message = "Nieprawidłowy format żądania";
+
+        //when
+        MvcTestResult result = mvc.put()
+                .uri("/api/students/{studentId}", 53L)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(body)
+                .exchange();
+
+        //then
+        assertThat(result)
+                .hasStatus(HttpStatus.BAD_REQUEST)
+                .bodyJson()
+                .extractingPath("$.message")
+                .asString()
+                .isEqualTo(message);
+        verifyNoInteractions(studentService);
+    }
+
+    @Test
+    void updateStudentNotFoundReturns404() {
+        //given
+        String body = """
+                {
+                  "firstName": "Jane",
+                  "lastName": "Smith",
+                  "age": 37,
+                  "email": "jane.smith@example.com",
+                  "fieldOfStudy": "Fizyka"
+                }
+                """;
+        String message = "Student not found";
+        when(studentService.updateStudent(any(Long.class), any(StudentRequest.class))).thenThrow(new NotFoundException(message));
+
+        //when
+        MvcTestResult result = mvc.put()
+                .uri("/api/students/{studentId}", 53L)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(body)
+                .exchange();
+
+        //then
+        assertThat(result)
+                .hasStatus(HttpStatus.NOT_FOUND)
+                .bodyJson()
+                .extractingPath("$.message")
+                .asString()
+                .isEqualTo(message);
     }
 }
