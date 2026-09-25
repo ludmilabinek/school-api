@@ -288,6 +288,9 @@ Wszystkie wymagania zadania są zrealizowane. Poniższe punkty to dopracowanie.
 
 ### 1. Testy
 
+Razem 43 testy. Każdy z nich został sprawdzony mutacją kodu produkcyjnego —
+zepsuciem jednej linii i upewnieniem się, że test faktycznie pada.
+
 **Testy jednostkowe serwisów — zrobione.** `StudentServiceTest` (7) i
 `TeacherServiceTest` (10): Mockito, zaślepione repozytoria, bez kontekstu Springa.
 Pokrywają `NotFoundException` przy nieistniejącym identyfikatorze, przypisywanie
@@ -305,21 +308,38 @@ Poza zakresem testów jednostkowych zostały:
   `removeStudent`) — testy serwisów sprawdzają ją tylko pośrednio; docelowo
   osobny test encji, bez Mockito i Springa.
 
-**Testy warstwy webowej — częściowo zrobione.** `StudentControllerTest` (5)
-i `TeacherControllerTest` (6): `@WebMvcTest` z `MockMvcTester`, serwisy
-podstawione przez `@MockitoBean`. Pokrywają cztery kody odpowiedzi i oba kształty
-błędu z `GlobalExceptionHandler`:
+**Testy warstwy webowej — zrobione.** `StudentControllerTest` (12)
+i `TeacherControllerTest` (13): `@WebMvcTest` z `MockMvcTester`, serwisy
+podstawione przez `@MockitoBean`. Pokrywają wszystkie endpointy obu kontrolerów,
+kody odpowiedzi i oba kształty błędu z `GlobalExceptionHandler`:
 
 | Scenariusz | Oczekiwanie |
 |---|---|
 | serwis rzuca `NotFoundException` | `404` z polem `message` |
 | `age` poniżej minimum | `400` z mapą `errors` |
 | poprawne dane | `201` z pełnym JSON-em zasobu |
+| edycja poprawnymi danymi | `200` z pełnym JSON-em zasobu |
 | usunięcie | `204` z pustym ciałem |
 | niepoprawny JSON | `400` z polem `message` |
 | nieznana wartość enuma `subject` (tylko nauczyciele) | `400` z polem `message` |
+| lista | `200` z `content`, `totalElements` i `totalPages` |
+| żądanie bez parametrów | `Pageable` i puste napisy z wartości domyślnych |
 
-Zostało w obu kontrolerach: `GET` z listą i stronicowaniem, `search` i `PUT` edycji.
+Endpointy zwracające `Page` mają po dwa testy. Pierwszy sprawdza kształt
+odpowiedzi na zaślepce zwracającej `PageImpl` z listą dwóch elementów, rozmiarem
+strony 2 i sumą 5 — trzy różne liczby, więc pomylenie pól od razu widać. Drugi
+nie ogląda odpowiedzi, tylko przez `verify` pilnuje argumentu przekazanego do
+serwisu: `PageRequest.of(0, 20, Sort.by(ASC, "lastName", "firstName"))` z
+`@PageableDefault` oraz puste napisy z `@RequestParam(defaultValue = "")`.
+Do sprawdzenia argumentu użyty jest `verify` z konkretną wartością, a nie
+`ArgumentCaptor`: `PageRequest` ma `equals`, więc jedno porównanie obejmuje
+numer strony, rozmiar i całe sortowanie.
+
+W teście poprawnej edycji zaślepka zwraca zasób z jednym przypisanym
+nauczycielem (u nauczycieli — studentem). Tej wartości nie ma w ciele żądania,
+więc odpowiedzi nie da się odtworzyć z tego, co przysłał klient. Bez niej test
+przechodził także wtedy, gdy kontroler ignorował wynik serwisu i sklejał
+odpowiedź z żądania — sprawdzone mutacją kodu produkcyjnego.
 
 Wymaga osobnej zależności, bo w Spring Boot 4 testy webowe są w oddzielnym
 module: `testImplementation 'org.springframework.boot:spring-boot-starter-webmvc-test'`.
