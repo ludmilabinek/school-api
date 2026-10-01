@@ -1,7 +1,6 @@
 package org.example.school.repository;
 
 import org.example.school.model.Student;
-import org.example.school.model.Subject;
 import org.example.school.model.Teacher;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -25,19 +24,8 @@ class StudentRepositoryTest {
     @Test
     void findsStudentByPartOfLastNameIgnoringCase() {
         //given
-        Student nowak = new Student();
-        nowak.setFirstName("Jan");
-        nowak.setLastName("Nowak");
-        nowak.setEmail("jan.nowak@example.com");
-        nowak.setAge(25);
-        nowak.setFieldOfStudy("Fizyka");
-
-        Student wisniewski = new Student();
-        wisniewski.setFirstName("Jan");
-        wisniewski.setLastName("Wiśniewski");
-        wisniewski.setEmail("jan.wisniewski@example.com");
-        wisniewski.setAge(30);
-        wisniewski.setFieldOfStudy("Biologia");
+        Student nowak = TestEntities.student("Jan", "Nowak");
+        Student wisniewski = TestEntities.student("Jan", "Wiśniewski");
 
         em.persistAndFlush(nowak);
         em.persistAndFlush(wisniewski);
@@ -58,26 +46,9 @@ class StudentRepositoryTest {
     @Test
     void findsStudentByFirstNamePartOfLastNameIgnoringCase() {
         //given
-        Student nowak = new Student();
-        nowak.setFirstName("Jan");
-        nowak.setLastName("Nowak");
-        nowak.setEmail("jan.nowak@example.com");
-        nowak.setAge(25);
-        nowak.setFieldOfStudy("Fizyka");
-
-        Student wisniewski = new Student();
-        wisniewski.setFirstName("Jan");
-        wisniewski.setLastName("Wiśniewski");
-        wisniewski.setEmail("jan.wisniewski@example.com");
-        wisniewski.setAge(30);
-        wisniewski.setFieldOfStudy("Biologia");
-
-        Student knowak = new Student();
-        knowak.setFirstName("Katarzyna");
-        knowak.setLastName("Nowak");
-        knowak.setEmail("katarzyna.nowak@example.com");
-        knowak.setAge(28);
-        knowak.setFieldOfStudy("Matematyka");
+        Student nowak = TestEntities.student("Jan", "Nowak");
+        Student wisniewski = TestEntities.student("Jan", "Wiśniewski");
+        Student knowak = TestEntities.student("Katarzyna", "Nowak");
 
         em.persistAndFlush(nowak);
         em.persistAndFlush(wisniewski);
@@ -100,44 +71,14 @@ class StudentRepositoryTest {
     @Test
     void findByTeacher_Id() {
         //given
-        Student nowak = new Student();
-        nowak.setFirstName("Jan");
-        nowak.setLastName("Nowak");
-        nowak.setEmail("jan.nowak@example.com");
-        nowak.setAge(25);
-        nowak.setFieldOfStudy("Fizyka");
-
-        Student wisniewski = new Student();
-        wisniewski.setFirstName("Jan");
-        wisniewski.setLastName("Wiśniewski");
-        wisniewski.setEmail("jan.wisniewski@example.com");
-        wisniewski.setAge(30);
-        wisniewski.setFieldOfStudy("Biologia");
-
-        Student knowak = new Student();
-        knowak.setFirstName("Katarzyna");
-        knowak.setLastName("Nowak");
-        knowak.setEmail("katarzyna.nowak@example.com");
-        knowak.setAge(28);
-        knowak.setFieldOfStudy("Matematyka");
-
-        Teacher teacher = new Teacher();
-        teacher.setFirstName("Krzysztof");
-        teacher.setLastName("Staropolski");
-        teacher.setSubject(Subject.MATEMATYKA);
-        teacher.setEmail("krzysztof.staropolski@example.com");
-        teacher.setAge(50);
+        Student nowak = TestEntities.student("Jan", "Nowak");
+        Student wisniewski = TestEntities.student("Jan", "Wiśniewski");
+        Student knowak = TestEntities.student("Katarzyna", "Nowak");
+        Teacher teacher = TestEntities.teacher("Krzysztof", "Staropolski");
+        Teacher teacher2 = TestEntities.teacher("Albert", "Niewiadomski");
 
         teacher.addStudent(nowak);
         teacher.addStudent(wisniewski);
-
-        Teacher teacher2 = new Teacher();
-        teacher2.setFirstName("Albert");
-        teacher2.setLastName("Niewiadomski");
-        teacher2.setSubject(Subject.GEOGRAFIA);
-        teacher2.setEmail("albert.niewiadomski@example.com");
-        teacher2.setAge(53);
-
         teacher2.addStudent(knowak);
 
         em.persistAndFlush(nowak);
