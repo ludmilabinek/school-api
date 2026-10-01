@@ -288,8 +288,8 @@ Wszystkie wymagania zadania są zrealizowane. Poniższe punkty to dopracowanie.
 
 ### 1. Testy
 
-Razem 43 testy. Każdy z nich został sprawdzony mutacją kodu produkcyjnego —
-zepsuciem jednej linii i upewnieniem się, że test faktycznie pada.
+Razem 50 testów w trzech warstwach. Każdy z nich został sprawdzony mutacją kodu
+produkcyjnego — zepsuciem jednej linii i upewnieniem się, że test faktycznie pada.
 
 **Testy jednostkowe serwisów — zrobione.** `StudentServiceTest` (7) i
 `TeacherServiceTest` (10): Mockito, zaślepione repozytoria, bez kontekstu Springa.
@@ -303,7 +303,7 @@ na kopii kolekcji) oraz to, że edycja nie gubi przypisań.
 
 Poza zakresem testów jednostkowych zostały:
 - metody `save` i wyszukujące — to cienkie przekazania do repozytorium,
-  sensowniej sprawdzić je w testach webowych i repozytoriów,
+  sprawdzone w testach webowych i w testach repozytoriów,
 - obustronna synchronizacja relacji w samych encjach (`Teacher.addStudent`,
   `removeStudent`) — testy serwisów sprawdzają ją tylko pośrednio; docelowo
   osobny test encji, bez Mockito i Springa.
@@ -344,11 +344,46 @@ odpowiedź z żądania — sprawdzone mutacją kodu produkcyjnego.
 Wymaga osobnej zależności, bo w Spring Boot 4 testy webowe są w oddzielnym
 module: `testImplementation 'org.springframework.boot:spring-boot-starter-webmvc-test'`.
 
-**Testy repozytoriów** — `@DataJpaTest`: czy metody pochodne faktycznie filtrują
-tak, jak sugerują ich nazwy (dopasowanie częściowe, ignorowanie wielkości liter,
-filtrowanie po relacji). Tutaj także: czy usunięcie nauczyciela kasuje jego
-wiersze w tabeli łączącej — test jednostkowy sprawdza tylko wywołanie `delete`,
-samo usunięcie wierszy wykonuje Hibernate i widać je dopiero na prawdziwej bazie.
+**Testy repozytoriów — zrobione.** `StudentRepositoryTest` (3) i
+`TeacherRepositoryTest` (4): `@DataJpaTest`, prawdziwa baza H2, prawdziwy
+Hibernate, bez Mockito. Zamykają lukę, której mocki z zasady nie dosięgną —
+potwierdzają, że twój kod wywołał to, co chciał, ale nie że Spring Data
+i Hibernate zrozumiały to tak samo:
+
+| Scenariusz | Oczekiwanie |
+|---|---|
+| fragment nazwiska zapisany inną wielkością liter | metoda pochodna generuje `LIKE` z `LOWER()` |
+| fragment imienia i nazwiska naraz | oba warunki połączone przez `AND` |
+| `findByTeachers_Id` / `findByStudents_Id` | `JOIN` przez tabelę łączącą, filtrowany po identyfikatorze |
+| usunięcie nauczyciela | `teachers_students` puste, studenci nietknięci |
+
+Dane do bazy wstawia `TestEntityManager`, nigdy testowane repozytorium. Po
+zapisie wołane jest `em.clear()` — bez niego Hibernate oddaje encje z kontekstu
+persystencji i test przechodzi, nie wykonawszy sprawdzanego zapytania. Wspólne
+dane tworzy wytwórnia `TestEntities`: wartości, na których opierają się asercje,
+są jej argumentami, pozostałe (wiek, e-mail) mają wartości domyślne w środku.
+
+Dobór danych jest tu ważniejszy od asercji. Na każdy warunek w zapytaniu
+przypada wiersz, który łamie **wyłącznie** ten warunek — stąd w testach
+wyszukiwania trzeci wiersz (`Katarzyna Nowak` obok `Jana Nowaka`
+i `Jana Wiśniewskiego`), a w testach relacji drugi nauczyciel. Bez nich mutacje
+polegające na usunięciu jednego warunku przechodziły niezauważone.
+
+Stan tabeli łączącej sprawdzany jest `JdbcTemplate`, bo `teachers_students` nie
+ma własnej encji. Liczby wierszy porównywane są ze stałymi z testu, a nie
+z drugim pomiarem — gdyby zapis danych zawiódł, porównanie dwóch pomiarów
+przeszłoby na dwóch zerach. Ten jeden test pilnuje też, by na relacji nigdy nie
+pojawiła się kaskada `REMOVE`: po jej dodaniu usunięcie nauczyciela kasuje
+studentów i test pada.
+
+Wymaga osobnej zależności, tak jak testy webowe:
+`testImplementation 'org.springframework.boot:spring-boot-starter-data-jpa-test'`.
+W Spring Boot 4 `@DataJpaTest` jest w pakiecie
+`org.springframework.boot.data.jpa.test.autoconfigure`, a `TestEntityManager`
+w `org.springframework.boot.jpa.test.autoconfigure` — oba inne niż w Boocie 3.
+
+Z testów zostaje jedno: wspomniany wyżej test encji dla `Teacher.addStudent`
+i `removeStudent`, bez Springa i bez Mockito.
 
 ### 2. Dane startowe
 
