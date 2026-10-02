@@ -37,7 +37,9 @@ Podgląd bazy: `http://localhost:8081/h2-console`
 | User | `user` |
 | Password | `password` |
 
-Baza żyje w pamięci — dane znikają po zatrzymaniu aplikacji.
+Baza żyje w pamięci — dane znikają po zatrzymaniu aplikacji. Przy każdym starcie
+`DataInitializer` wstawia dane przykładowe: trzech nauczycieli, pięciu studentów
+i pięć przypisań między nimi (szczegóły w sekcji [Dane startowe](#dane-startowe)).
 
 ### Dokumentacja API
 
@@ -63,6 +65,7 @@ org.example.school
 ├── repository    — dostęp do bazy (interfejsy Spring Data)
 ├── model         — encje JPA i typy domenowe
 ├── dto           — obiekty kontraktu API (rekordy)
+├── config        — dane startowe (`CommandLineRunner`)
 └── exception     — własne wyjątki i globalna obsługa błędów
 ```
 
@@ -282,6 +285,40 @@ Schemat tworzy Hibernate. W projekcie produkcyjnym schematem zarządzałoby
 narzędzie migracyjne (Flyway, Liquibase), gdzie każda zmiana jest wersjonowanym
 skryptem w repozytorium.
 
+### Dane startowe
+
+`DataInitializer` (`CommandLineRunner`) wstawia dane przykładowe po starcie
+aplikacji, więc po każdym restarcie API od razu ma co zwracać:
+
+| Przypadek | Dane |
+|---|---|
+| student z dwoma nauczycielami | Paweł Nowakowski (Wójcik, Kowalczyk) |
+| student bez nauczyciela | Zbigniew Wiśniewski |
+| nauczyciel bez studentów | Piotr Dziuba |
+
+Ostatnie dwa wiersze to stany, które API wytwarza samo — nowy zasób zaczyna bez
+przypisań, a odpięcie ostatniego nauczyciela jest dozwolone. Treść zadania nie
+wymaga, by student miał nauczyciela ani odwrotnie.
+
+- **Zapis przez repozytoria, nie serwisy.** Walidacja Bean Validation działa
+  w kontrolerze (`@Valid`), więc nie chroni ani repozytorium, ani wywołanego
+  bezpośrednio serwisu. Dane startowe muszą same spełniać reguły z DTO —
+  inaczej API oddałoby rekord, którego `PUT` z tymi samymi danymi by nie przyjął.
+- **Kolejność: studenci, potem nauczyciele.** Na relacji nie ma kaskady, a zapis
+  nauczyciela wstawia wiersze do `teachers_students`, do których potrzebne są
+  identyfikatory studentów. Przypisania tworzy `teacher.addStudent(...)` — od
+  strony właściciela relacji.
+- **Tylko przy pustej bazie.** Runner nic nie robi, jeśli w którejkolwiek tabeli
+  są już wiersze. Przy bazie w pamięci warunek zawsze jest spełniony, ale po
+  przejściu na trwałą bazę każdy restart dopisywałby ten sam zestaw. Sprawdzane
+  są obie tabele — inaczej istniejący nauczyciele bez studentów nie
+  zablokowaliby wstawienia.
+
+Runner działa tylko przy pełnym kontekście (`@SpringBootTest`). Wycinki
+`@WebMvcTest` i `@DataJpaTest` go nie ładują, więc nie zmienia danych w testach
+repozytoriów. `contextLoads()` działa przy okazji jako test dymny: wyjątek
+w runnerze zatrzymałby start kontekstu.
+
 ## Do zrobienia
 
 Wszystkie wymagania zadania są zrealizowane. Poniższe punkty to dopracowanie.
@@ -406,13 +443,7 @@ W Spring Boot 4 `@DataJpaTest` jest w pakiecie
 `org.springframework.boot.data.jpa.test.autoconfigure`, a `TestEntityManager`
 w `org.springframework.boot.jpa.test.autoconfigure` — oba inne niż w Boocie 3.
 
-### 2. Dane startowe
-
-`CommandLineRunner` wstawiający kilku nauczycieli, studentów i przypisania między
-nimi — z warunkiem wykonania tylko wtedy, gdy baza jest pusta. Ułatwi ręczne
-testowanie po każdym restarcie (baza jest w pamięci, więc znika).
-
-### 3. Granice transakcji
+### 2. Granice transakcji
 
 Metody `save` w obu serwisach nie mają `@Transactional`, choć mapują wynik na DTO
 sięgające po leniwą kolekcję. Działa to wyłącznie dzięki domyślnie włączonemu
@@ -422,7 +453,7 @@ Kolejność: najpierw `@Transactional` na `save`, potem
 `spring.jpa.open-in-view=false`, potem sprawdzenie wszystkich endpointów pod kątem
 `LazyInitializationException`. Zniknie też ostrzeżenie przy starcie aplikacji.
 
-### 4. Drobiazgi
+### 3. Drobiazgi
 
 - Rozważyć `spring.jpa.hibernate.ddl-auto=create-drop` zamiast `update` —
   przy bazie w pamięci `update` nie ma nic do aktualizowania i myli intencję.
