@@ -288,25 +288,49 @@ Wszystkie wymagania zadania są zrealizowane. Poniższe punkty to dopracowanie.
 
 ### 1. Testy
 
-Razem 50 testów w trzech warstwach. Każdy z nich został sprawdzony mutacją kodu
+Razem 57 testów w czterech warstwach. Każdy z nich został sprawdzony mutacją kodu
 produkcyjnego — zepsuciem jednej linii i upewnieniem się, że test faktycznie pada.
-
-**Testy jednostkowe serwisów — zrobione.** `StudentServiceTest` (7) i
-`TeacherServiceTest` (10): Mockito, zaślepione repozytoria, bez kontekstu Springa.
-Pokrywają `NotFoundException` przy nieistniejącym identyfikatorze, przypisywanie
-i odpinanie, usuwanie (łącznie z odpięciem studenta od wszystkich nauczycieli
-na kopii kolekcji) oraz to, że edycja nie gubi przypisań.
 
 ```bash
 ./gradlew test
 ```
 
-Poza zakresem testów jednostkowych zostały:
-- metody `save` i wyszukujące — to cienkie przekazania do repozytorium,
-  sprawdzone w testach webowych i w testach repozytoriów,
-- obustronna synchronizacja relacji w samych encjach (`Teacher.addStudent`,
-  `removeStudent`) — testy serwisów sprawdzają ją tylko pośrednio; docelowo
-  osobny test encji, bez Mockito i Springa.
+**Testy encji — zrobione.** `TeacherTest` (2) i `StudentTest` (2): czysty JUnit,
+bez Springa i bez Mockito, obiekty tworzone przez `new`. Sprawdzają, że
+`addStudent` / `removeStudent` i delegujące `addTeacher` / `removeTeacher`
+zmieniają obie strony relacji naraz.
+
+Strona `mappedBy` (`Student.teachers`) nie trafia do bazy, więc usunięcie linii
+`student.getTeachers().add(this)` nie zmienia zawartości `teachers_students`
+i testy repozytoriów przechodzą. Skutek widać dopiero w pamięci: serwis mapujący
+studenta na DTO zaraz po przypisaniu oddaje nieaktualną listę nauczycieli.
+Testy serwisów wyłapują to pośrednio, przez treść odpowiedzi; test encji wskazuje
+wprost, która linia jest zepsuta.
+
+Przy odpinaniu każdy element danych ma swoją rolę. Przypięcie przed wywołaniem
+`removeStudent` wyłapuje metodę, która nic nie robi albo przypina zamiast
+odpinać. Drugi student (u studentów — drugi nauczyciel) wyłapuje metodę, która
+czyści całą kolekcję zamiast usunąć jeden element.
+
+Encje nie mają ustawionego `id`, a `equals` przy `id == null` porównuje
+tożsamość obiektów (`this == o`) — dlatego `contains` i `remove` działają na tych
+samych instancjach bez zapisu do bazy.
+
+**Testy jednostkowe serwisów — zrobione.** `StudentServiceTest` (10) i
+`TeacherServiceTest` (10): Mockito, zaślepione repozytoria, bez kontekstu Springa.
+Pokrywają `NotFoundException` przy nieistniejącym identyfikatorze, przypisywanie
+i odpinanie, usuwanie (łącznie z odpięciem studenta od wszystkich nauczycieli
+na kopii kolekcji) oraz to, że edycja nie gubi przypisań.
+
+Testy odpinania nauczyciela od studenta (`StudentService.removeTeacher`) doszły
+razem z testami encji. Wcześniej ta metoda serwisu nie miała żadnego testu,
+a `Student.removeTeacher` wołające `addStudent` zamiast `removeStudent` —
+endpoint „odepnij” przypinający zamiast odpinać — przechodziło przez cały zestaw. W teście poprawnego odpięcia student
+ma dwóch nauczycieli, a odpowiedź ma zawierać dokładnie jednego.
+
+Poza zakresem testów jednostkowych zostały metody `save` i wyszukujące — to
+cienkie przekazania do repozytorium, sprawdzone w testach webowych i w testach
+repozytoriów.
 
 **Testy warstwy webowej — zrobione.** `StudentControllerTest` (12)
 i `TeacherControllerTest` (13): `@WebMvcTest` z `MockMvcTester`, serwisy
@@ -381,9 +405,6 @@ Wymaga osobnej zależności, tak jak testy webowe:
 W Spring Boot 4 `@DataJpaTest` jest w pakiecie
 `org.springframework.boot.data.jpa.test.autoconfigure`, a `TestEntityManager`
 w `org.springframework.boot.jpa.test.autoconfigure` — oba inne niż w Boocie 3.
-
-Z testów zostaje jedno: wspomniany wyżej test encji dla `Teacher.addStudent`
-i `removeStudent`, bez Springa i bez Mockito.
 
 ### 2. Dane startowe
 

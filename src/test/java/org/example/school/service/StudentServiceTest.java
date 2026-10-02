@@ -1,8 +1,6 @@
 package org.example.school.service;
 
-import org.example.school.dto.StudentRequest;
-import org.example.school.dto.StudentResponse;
-import org.example.school.dto.TeacherSummary;
+import org.example.school.dto.*;
 import org.example.school.exception.NotFoundException;
 import org.example.school.model.Student;
 import org.example.school.model.Teacher;
@@ -81,6 +79,52 @@ class StudentServiceTest {
         assertThat(studentResponse.teachers())
                 .extracting(TeacherSummary::lastName)
                 .containsExactlyInAnyOrder("Black");
+    }
+
+    @Test
+    void removeTeacherStudentDoesNotExistThrowNotFound() {
+        //given
+        when(studentRepository.findById(1L)).thenReturn(Optional.empty());
+
+        //when + then
+        NotFoundException e = assertThrows(NotFoundException.class, () -> studentService.removeTeacher(1L, 2L));
+        assertThat(e.getMessage()).containsIgnoringCase("student");
+    }
+
+
+    @Test
+    void removeTeacherTeacherDoesNotExistThrowNotFound() {
+        //given
+        Student student = student();
+
+        when(studentRepository.findById(1L)).thenReturn(Optional.of(student));
+        when(teacherRepository.findById(2L)).thenReturn(Optional.empty());
+
+        //when + then
+        NotFoundException e = assertThrows(NotFoundException.class, () -> studentService.removeTeacher(1L, 2L));
+        assertThat(e.getMessage()).containsIgnoringCase("teacher");
+    }
+
+    @Test
+    void removeTeacherTwoAssignedRemovesOnlyGivenTeacher() {
+        //given
+
+        Student student = student();
+        Teacher teacher = teacher("Nick", "Black");
+        Teacher teacher2 = teacher("Jane", "Smith");
+        student.addTeacher(teacher);
+        student.addTeacher(teacher2);
+
+        when(studentRepository.findById(1L)).thenReturn(Optional.of(student));
+        when(teacherRepository.findById(2L)).thenReturn(Optional.of(teacher));
+
+        //when
+        StudentResponse studentResponse = studentService.removeTeacher(1L, 2L);
+
+        //then
+        assertThat(studentResponse.teachers())
+                .extracting(TeacherSummary::lastName)
+                .containsExactlyInAnyOrder("Smith");
     }
 
     @Test
