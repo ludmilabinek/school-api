@@ -443,15 +443,41 @@ W Spring Boot 4 `@DataJpaTest` jest w pakiecie
 `org.springframework.boot.data.jpa.test.autoconfigure`, a `TestEntityManager`
 w `org.springframework.boot.jpa.test.autoconfigure` — oba inne niż w Boocie 3.
 
-### 2. Granice transakcji
+### 2. Granice transakcji — zrobione
 
-Metody `save` w obu serwisach nie mają `@Transactional`, choć mapują wynik na DTO
-sięgające po leniwą kolekcję. Działa to wyłącznie dzięki domyślnie włączonemu
-`spring.jpa.open-in-view`, które przedłuża sesję Hibernate na czas całego żądania.
+`spring.jpa.open-in-view` jest wyłączone, a każda publiczna metoda serwisu
+jawnie deklaruje swoją transakcję: zapisujące `@Transactional`, czytające
+`@Transactional(readOnly = true)`.
 
-Kolejność: najpierw `@Transactional` na `save`, potem
-`spring.jpa.open-in-view=false`, potem sprawdzenie wszystkich endpointów pod kątem
-`LazyInitializationException`. Zniknie też ostrzeżenie przy starcie aplikacji.
+Open-in-view (domyślnie włączone) otwiera sesję Hibernate na początku żądania
+i zamyka ją dopiero po zapisaniu odpowiedzi, więc leniwe kolekcje dają się
+doładować nawet poza transakcją. To wygodne, ale ukrywa błędy: kod, który
+działa tylko dzięki temu mechanizmowi, pada dopiero po jego wyłączeniu.
+
+Pierwotnie zakładałam, że `save` (bez `@Transactional`, mapujące wynik na DTO
+z kolekcją) działa wyłącznie dzięki open-in-view. Eksperyment to obalił:
+aplikacja uruchomiona z `--spring.jpa.open-in-view=false` obsłużyła `POST`
+i `GET` bez `LazyInitializationException`. Powód: leniwość nie jest cechą
+kolekcji, tylko sposobem **wczytywania encji z bazy**. `save` tworzy encję przez
+`new`, więc jej kolekcja jest od początku w pamięci i nie ma czego doładowywać.
+Wszystkie metody, które encje wczytują, mają już transakcję i mapują na DTO,
+zanim sesja się zamknie.
+
+`save` dostało mimo to `@Transactional`, z dwóch powodów:
+
+- **Atomowość.** Bez adnotacji transakcję otwiera i zatwierdza samo
+  `repository.save`, a mapowanie na DTO dzieje się już po zatwierdzeniu.
+  Wyjątek przy mapowaniu kończyłby się odpowiedzią `500` przy zapisanym
+  wierszu, a ponowienie żądania przez klienta — duplikatem. Z adnotacją
+  transakcja repozytorium dołącza do transakcji serwisu (propagacja
+  `REQUIRED`) i wyjątek wycofuje zapis.
+- **Granica we właściwym miejscu.** Jednostką pracy jest metoda serwisu, nie
+  wywołanie repozytorium. Gdy `save` zacznie robić więcej niż jeden zapis,
+  transakcja już je obejmie.
+
+Adnotacja stoi na metodach publicznych wywoływanych z zewnątrz serwisu.
+`@Transactional` działa przez proxy Springa, więc na metodzie prywatnej albo
+wołanej przez `this` nie miałaby żadnego skutku.
 
 ### 3. Drobiazgi
 

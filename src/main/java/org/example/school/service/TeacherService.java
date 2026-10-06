@@ -33,6 +33,7 @@ public class TeacherService {
                 .orElseThrow(() -> new NotFoundException("Student with id " + id + " does not exist"));
     }
 
+    @Transactional
     public TeacherResponse save(TeacherRequest teacherRequest) {
         Teacher teacher = teacherRepository.save(teacherRequest.toEntity());
         return TeacherResponse.from(teacher);
