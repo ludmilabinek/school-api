@@ -285,6 +285,19 @@ Schemat tworzy Hibernate. W projekcie produkcyjnym schematem zarządzałoby
 narzędzie migracyjne (Flyway, Liquibase), gdzie każda zmiana jest wersjonowanym
 skryptem w repozytorium.
 
+`spring.jpa.hibernate.ddl-auto` ma wartość `create-drop`: tabele powstają przy
+starcie i są usuwane przy zamknięciu aplikacji. Przy bazie `mem:` zachowanie
+byłoby takie samo z `update` — baza i tak znika razem z JVM, więc Hibernate
+za każdym razem zastaje ją pustą — ale `update` sugeruje bazę, która przeżywa
+restarty, czyli intencję, której tu nie ma. Wartość jest wpisana jawnie, choć
+Spring Boot dla baz wbudowanych sam domyślnie wybiera `create-drop`: konfiguracja
+mówi, co robi, bez znajomości wartości domyślnych.
+
+Jawne `create-drop` ma jedno ryzyko: po podmianie adresu na prawdziwą bazę
+aplikacja wystartuje bez błędu i przy każdym restarcie skasuje dane. Dlatego
+komentarz przy tej linii wskazuje `validate` — przy schemacie zakładanym przez
+migracje Hibernate tylko sprawdza jego zgodność z encjami.
+
 ### Dane startowe
 
 `DataInitializer` (`CommandLineRunner`) wstawia dane przykładowe po starcie
@@ -481,8 +494,6 @@ wołanej przez `this` nie miałaby żadnego skutku.
 
 ### 3. Drobiazgi
 
-- Rozważyć `spring.jpa.hibernate.ddl-auto=create-drop` zamiast `update` —
-  przy bazie w pamięci `update` nie ma nic do aktualizowania i myli intencję.
 - Adnotacje `@Tag` i `@Operation` dla czytelniejszej dokumentacji w Swaggerze.
 - Ujednolicić język komunikatów błędów — `NotFoundException` zwraca angielski,
   handler `HttpMessageNotReadableException` polski. Zgodnie z decyzją o angielskim
