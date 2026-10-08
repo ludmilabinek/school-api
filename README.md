@@ -298,6 +298,23 @@ aplikacja wystartuje bez błędu i przy każdym restarcie skasuje dane. Dlatego
 komentarz przy tej linii wskazuje `validate` — przy schemacie zakładanym przez
 migracje Hibernate tylko sprawdza jego zgodność z encjami.
 
+### Opisy w Swaggerze i jawne `operationId`
+
+Kontrolery mają `@Tag` (nazwa i opis grupy zamiast `student-controller`)
+i `@Operation` na każdej metodzie. `summary` ma każda operacja; `description`
+tylko te, których zachowania nie widać ze ścieżki i metody HTTP —
+idempotentne przypisywanie i odpinanie oraz wyszukiwanie (dopasowanie do
+fragmentu, bez względu na wielkość liter, pusty parametr pasuje do wszystkich).
+
+Każda operacja ma też jawne `operationId`. Domyślnie springdoc bierze je z nazwy
+metody Javy, a przy powtórzeniu w drugim kontrolerze dokleja `_1` — tak powstały
+`update_1`, `save_1`, `findAll_1`, `search_1` i `removeById_1`. Unikalność
+pozostałych była przypadkowa: dodanie metody o istniejącej nazwie albo zwykła
+zmiana nazwy w IDE przemianowałaby operację w kontrakcie API, a klient
+wygenerowany z OpenAPI ma metody nazwane właśnie po `operationId`. Konwencja:
+nazwa metody z rzeczownikiem (`saveStudent`, `addTeacherToStudent`), lustrzanie
+w obu kontrolerach.
+
 ### Dane startowe
 
 `DataInitializer` (`CommandLineRunner`) wstawia dane przykładowe po starcie
@@ -494,7 +511,11 @@ wołanej przez `this` nie miałaby żadnego skutku.
 
 ### 3. Drobiazgi
 
-- Adnotacje `@Tag` i `@Operation` dla czytelniejszej dokumentacji w Swaggerze.
+- Odpowiedzi błędów w Swaggerze. springdoc dokleja `400` i `404` z
+  `GlobalExceptionHandler` do każdej operacji, także tych, które ich nie zwracają
+  (na przykład lista bez parametrów ścieżki nie zwróci `404`). Do sprawdzenia
+  eksperymentem, czy jawne `@ApiResponse` na metodzie zastępuje doklejone
+  odpowiedzi, czy tylko dopisuje swoje.
 - Ujednolicić język komunikatów błędów — `NotFoundException` zwraca angielski,
   handler `HttpMessageNotReadableException` polski. Zgodnie z decyzją o angielskim
   nazewnictwie tłumaczenie należy do warstwy prezentacji.
