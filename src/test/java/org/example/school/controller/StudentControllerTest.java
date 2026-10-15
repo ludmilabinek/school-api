@@ -67,7 +67,7 @@ class StudentControllerTest {
                   "fieldOfStudy": "Fizyka"
                 }
                 """;
-        String message = "Musi mieć przynajmniej 19 lat";
+        String message = "wiek musi wynosić co najmniej 19 lat";
 
         //when
         MvcTestResult result = mvc.post()

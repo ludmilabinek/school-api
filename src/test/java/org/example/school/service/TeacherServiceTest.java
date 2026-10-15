@@ -53,7 +53,7 @@ class TeacherServiceTest {
         when(teacherRepository.findById(1L)).thenReturn(Optional.empty());
         //when + then
         NotFoundException e = assertThrows(NotFoundException.class, () -> teacherService.addStudent(1L, 2L));
-        assertThat(e.getMessage()).containsIgnoringCase("teacher");
+        assertThat(e.getMessage()).containsIgnoringCase("nauczyciel");
     }
 
     @Test
@@ -89,7 +89,7 @@ class TeacherServiceTest {
         when(teacherRepository.findById(1L)).thenReturn(Optional.empty());
         //when + then
         NotFoundException e = assertThrows(NotFoundException.class, () -> teacherService.removeTeacher(1L));
-        assertThat(e.getMessage()).containsIgnoringCase("teacher");
+        assertThat(e.getMessage()).containsIgnoringCase("nauczyciel");
     }
 
     @Test
@@ -112,7 +112,7 @@ class TeacherServiceTest {
 
         //when + then
         NotFoundException e = assertThrows(NotFoundException.class, () -> teacherService.removeStudent(1L, 2L));
-        assertThat(e.getMessage()).containsIgnoringCase("teacher");
+        assertThat(e.getMessage()).containsIgnoringCase("nauczyciel");
     }
 
 
@@ -157,7 +157,7 @@ class TeacherServiceTest {
         when(teacherRepository.findById(1L)).thenReturn(Optional.empty());
         //when + then
         NotFoundException e = assertThrows(NotFoundException.class, () -> teacherService.updateTeacher(1L, request));
-        assertThat(e.getMessage()).containsIgnoringCase("teacher");
+        assertThat(e.getMessage()).containsIgnoringCase("nauczyciel");
     }
 
     @Test

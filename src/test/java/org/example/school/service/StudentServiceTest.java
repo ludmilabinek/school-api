@@ -62,7 +62,7 @@ class StudentServiceTest {
         when(teacherRepository.findById(2L)).thenReturn(Optional.empty());
         //when + then
         NotFoundException e = assertThrows(NotFoundException.class, () -> studentService.addTeacher(1L, 2L));
-        assertThat(e.getMessage()).containsIgnoringCase("teacher");
+        assertThat(e.getMessage()).containsIgnoringCase("nauczyciel");
     }
 
     @Test
@@ -102,7 +102,7 @@ class StudentServiceTest {
 
         //when + then
         NotFoundException e = assertThrows(NotFoundException.class, () -> studentService.removeTeacher(1L, 2L));
-        assertThat(e.getMessage()).containsIgnoringCase("teacher");
+        assertThat(e.getMessage()).containsIgnoringCase("nauczyciel");
     }
 
     @Test

@@ -25,12 +25,12 @@ public class TeacherService {
 
     private Teacher findTeacherById(Long id) {
         return teacherRepository.findById(id)
-                .orElseThrow(() -> new NotFoundException("Teacher with id " + id + " does not exist"));
+                .orElseThrow(() -> new NotFoundException("Nauczyciel o id " + id + " nie istnieje"));
     }
 
     private Student findStudentById(Long id) {
         return studentRepository.findById(id)
-                .orElseThrow(() -> new NotFoundException("Student with id " + id + " does not exist"));
+                .orElseThrow(() -> new NotFoundException("Student o id " + id + " nie istnieje"));
     }
 
     @Transactional

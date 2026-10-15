@@ -4,7 +4,7 @@ import jakarta.validation.constraints.*;
 import org.example.school.model.Student;
 
 public record StudentRequest(
-    @NotBlank(message = "imie jest wymagane")
+    @NotBlank(message = "imię jest wymagane")
     @Size(min = 3, message = "imię powinno mieć minimalnie 3 znaki")
     String firstName,
 
@@ -13,14 +13,14 @@ public record StudentRequest(
     String lastName,
 
     @NotNull(message = "wiek jest wymagany")
-    @Min(value = 19, message = "Musi mieć przynajmniej 19 lat")
+    @Min(value = 19, message = "wiek musi wynosić co najmniej 19 lat")
     Integer age,
 
     @NotBlank(message = "email jest wymagany")
     @Email(message = "niepoprawny format email")
     String email,
 
-    @NotNull(message = "kierunek jest wymagany")
+    @NotBlank(message = "kierunek jest wymagany")
     String fieldOfStudy
 )
 {

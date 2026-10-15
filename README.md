@@ -166,7 +166,24 @@ Nieistniejący identyfikator daje `404`.
 Mimo polskiej treści zadania klasy i API są po angielsku — frameworki, adnotacje
 i mechanizm generowania zapytań z nazw metod repozytoriów operują po angielsku,
 więc mieszanie języków dawałoby hybrydy w rodzaju `findAllByImieContaining`.
-Warstwa prezentacji (front) odpowiada za tłumaczenie na język użytkownika.
+
+### Język tekstów: kod po angielsku, teksty dla człowieka po polsku
+
+O języku decyduje odbiorca. Kod — klasy, pola, ścieżki, `operationId` — jest po
+angielsku (zob. wyżej). Wszystko, co czyta człowiek, jest po polsku: README,
+opisy w Swaggerze i komunikaty błędów, bo wszystkie czyta ta sama osoba —
+programista integrujący się z API. Komunikaty walidacji i `NotFoundException`
+mają jeden wzór: pole lub encja i to, co jest nie tak
+(`"wiek musi wynosić co najmniej 19 lat"`, `"Student o id 5 nie istnieje"`).
+
+Pole `error` w odpowiedzi (`"Bad Request"`, `"Not Found"`) zostaje po
+angielsku — to nazwa statusu HTTP z protokołu, nie zdanie dla człowieka, tak
+jak w domyślnej odpowiedzi błędu Springa.
+
+API wielojęzyczne zwracałoby zamiast gotowych zdań kody (pole, rodzaj błędu,
+parametry), a tłumaczeniem zajmowałby się frontend albo `MessageSource`
+z plikami `messages_pl.properties` / `messages_en.properties`. Przy jednym
+języku i jednym odbiorcy ten mechanizm nic nie wnosi.
 
 ### Klucz główny: `Long` + `IDENTITY`
 
@@ -516,9 +533,6 @@ wołanej przez `this` nie miałaby żadnego skutku.
   (na przykład lista bez parametrów ścieżki nie zwróci `404`). Do sprawdzenia
   eksperymentem, czy jawne `@ApiResponse` na metodzie zastępuje doklejone
   odpowiedzi, czy tylko dopisuje swoje.
-- Ujednolicić język komunikatów błędów — `NotFoundException` zwraca angielski,
-  handler `HttpMessageNotReadableException` polski. Zgodnie z decyzją o angielskim
-  nazewnictwie tłumaczenie należy do warstwy prezentacji.
 - Komunikat przy nieznanej wartości enuma. `"subject": "ASTROLOGIA"` odrzuca już
   Jackson (`HttpMessageNotReadableException`), zanim ruszy walidacja, więc klient
   dostaje ogólne „Nieprawidłowy format żądania” — bez nazwy pola i bez listy
