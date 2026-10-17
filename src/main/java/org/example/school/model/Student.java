@@ -91,4 +91,16 @@ public class Student {
     public int hashCode() {
         return getClass().hashCode();
     }
+
+    @Override
+    public String toString() {
+        return "Student{" +
+                "id=" + id +
+                ", firstName='" + firstName + '\'' +
+                ", lastName='" + lastName + '\'' +
+                ", email='" + email + '\'' +
+                ", age=" + age +
+                ", fieldOfStudy='" + fieldOfStudy + '\'' +
+                "}";
+    }
 }

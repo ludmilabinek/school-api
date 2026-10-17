@@ -101,4 +101,15 @@ public class Teacher {
         return getClass().hashCode();
     }
 
+    @Override
+    public String toString() {
+        return "Teacher{" +
+                "id=" + id +
+                ", firstName='" + firstName + '\'' +
+                ", lastName='" + lastName + '\'' +
+                ", email='" + email + '\'' +
+                ", age=" + age +
+                ", subject=" + subject +
+                '}';
+    }
 }

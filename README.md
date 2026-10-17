@@ -278,6 +278,23 @@ na samą encję główną, a złączenie z kolekcją wykonuje na zewnątrz. Star
 pobierały w takiej sytuacji całą tabelę i stronicowały ją w pamięci aplikacji
 (ostrzeżenie `HHH000104`).
 
+### `toString()` w encjach bez kolekcji
+
+`Teacher` i `Student` wypisują w `toString()` tylko pola proste — dzięki temu
+komunikaty porażek w testach i wpisy w logach pokazują dane zamiast
+`Student@119c745c`. Kolekcji relacji nie ma tam celowo, nawet w postaci liczby
+elementów:
+
+- **Nieskończona pętla** — student wypisujący nauczycieli, z których każdy wypisuje
+  studentów, kończy się `StackOverflowError`. To ten sam cykl, który w odpowiedziach
+  API przerywają `TeacherSummary` i `StudentSummary`.
+- **Leniwe ładowanie** — każde sięgnięcie do kolekcji, także `size()` czy pętla,
+  wymusza jej wczytanie. Poza transakcją (open-in-view jest wyłączone) kończy się to
+  `LazyInitializationException`, a w transakcji samo wypisanie encji wysyła do bazy
+  dodatkowe zapytanie.
+
+Relacje są widoczne w DTO, które powstają w transakcji serwisu.
+
 ### `PUT` zamiast `POST` przy przypisywaniu
 
 Przypisanie nauczyciela do studenta jest idempotentne — kolekcja jest zbiorem,
@@ -568,5 +585,3 @@ wołanej przez `this` nie miałaby żadnego skutku.
   (na przykład lista bez parametrów ścieżki nie zwróci `404`). Do sprawdzenia
   eksperymentem, czy jawne `@ApiResponse` na metodzie zastępuje doklejone
   odpowiedzi, czy tylko dopisuje swoje.
-- `toString()` na encjach (tylko pola proste, bez kolekcji) — komunikaty porażek
-  w testach pokazują dziś `Student@119c745c` zamiast danych.
