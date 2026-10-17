@@ -383,6 +383,24 @@ wygenerowany z OpenAPI ma metody nazwane właśnie po `operationId`. Konwencja:
 nazwa metody z rzeczownikiem (`saveStudent`, `addTeacherToStudent`), lustrzanie
 w obu kontrolerach.
 
+Odpowiedzi błędów springdoc bierze z `GlobalExceptionHandler`: każda metoda
+z `@ResponseStatus` staje się odpowiedzią ogólną i trafia do **każdej** operacji.
+Stąd `400` i `404` także tam, gdzie nie występują — lista bez parametrów ścieżki
+nigdy nie zwróci `404`. Sprawdzone eksperymentem na `/v3/api-docs`:
+
+- `@ApiResponse` na metodzie **nadpisuje** odpowiedź o tym samym kodzie —
+  `@ApiResponse(responseCode = "404", description = "...")` na
+  `removeTeacherById` zmienia opis `404` z „Not Found” na własny.
+- **Nie usuwa** pozostałych — `@ApiResponse` z samym `200` na `findAllTeachers`
+  daje `200`, `400` i `404`. Odpowiedzi z handlera i z adnotacji są łączone.
+
+Jedyny sposób na pozbycie się nadmiarowego kodu to
+`springdoc.override-with-generic-response=false`, które wyłącza odpowiedzi
+ogólne wszędzie. Wtedy każdą odpowiedź błędu trzeba zadeklarować ręcznie na
+każdej z 16 operacji, a pominięta po prostu znika z dokumentacji — bez błędu
+kompilacji i bez czerwonego testu. Doklejanie zostaje: nadmiarowe `404` na liście
+jest nieszkodliwe, brakujące `400` przy zapisie już nie.
+
 ### Dane startowe
 
 `DataInitializer` (`CommandLineRunner`) wstawia dane przykładowe po starcie
@@ -578,10 +596,11 @@ Adnotacja stoi na metodach publicznych wywoływanych z zewnątrz serwisu.
 `@Transactional` działa przez proxy Springa, więc na metodzie prywatnej albo
 wołanej przez `this` nie miałaby żadnego skutku.
 
-### 3. Drobiazgi
+### 3. Drobiazgi — zrobione
 
-- Odpowiedzi błędów w Swaggerze. springdoc dokleja `400` i `404` z
-  `GlobalExceptionHandler` do każdej operacji, także tych, które ich nie zwracają
-  (na przykład lista bez parametrów ścieżki nie zwróci `404`). Do sprawdzenia
-  eksperymentem, czy jawne `@ApiResponse` na metodzie zastępuje doklejone
-  odpowiedzi, czy tylko dopisuje swoje.
+- Opisy operacji i jawne `operationId` w Swaggerze, odpowiedzi błędów zbadane
+  i świadomie zostawione jako ogólne — „Decyzje projektowe → Opisy w Swaggerze
+  i jawne `operationId`”.
+- Komunikaty błędów po polsku i lista dozwolonych wartości dla nieznanego enuma
+  — „Język tekstów” i „Niedozwolona wartość enuma”.
+- `toString()` w encjach — „`toString()` w encjach bez kolekcji”.
