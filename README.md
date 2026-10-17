@@ -157,7 +157,8 @@ GET /api/students/search?lastName=kow&size=5        → łącznie ze stronicowan
 | `subject` / `fieldOfStudy` | wymagane |
 
 Błędy walidacji zwracane są jako `400` z mapą `pole → komunikat`.
-Nieistniejący identyfikator daje `404`.
+Niedozwolona wartość enuma (`"subject": "ASTROLOGIA"`) daje ten sam kształt,
+z listą dozwolonych wartości. Nieistniejący identyfikator daje `404`.
 
 ## Decyzje projektowe
 
@@ -288,6 +289,39 @@ oznaczałby tworzenie nowego zasobu przy każdym wywołaniu.
 `@NotNull` przepuszcza pusty łańcuch i sam biały znak; `@NotBlank` odrzuca oba.
 Dla pól liczbowych i enumów pozostaje `@NotNull`, bo `@NotBlank` dotyczy tekstu.
 
+### Niedozwolona wartość enuma
+
+Wartość spoza enuma odrzuca Jackson przy zamianie JSON-a na DTO, zanim ruszy
+walidacja — obiekt żądania nie powstaje, więc `@Valid` nie ma czego sprawdzać.
+Spring opakowuje wtedy `InvalidFormatException` w
+`HttpMessageNotReadableException`, a handler tego wyjątku zagląda do
+`getCause()`. Gdy przyczyną jest `InvalidFormatException`, a typem docelowym
+enum, odpowiedź ma kształt błędu walidacji:
+
+```json
+"errors": { "subject": "niedozwolona wartość ASTROLOGIA, dozwolone: MATEMATYKA, FIZYKA, GEOGRAFIA" }
+```
+
+- **`errors`, nie `message`** — błąd dotyczy konkretnego pola, więc frontend
+  obsługuje go tak samo jak błędy walidacji i podświetla właściwe pole.
+- **Komunikat bez nazwy pola** — nazwa jest kluczem w `errors`, a handler zna
+  tylko nazwę z JSON-a (`subject`), nie jej polski odpowiednik. Wszystko w treści
+  pochodzi z wyjątku: odrzucona wartość z `getValue()`, lista z
+  `getTargetType().getEnumConstants()`. Handler działa bez zmian dla każdego
+  przyszłego enuma.
+- **Tylko enumy** — ten sam wyjątek leci przy `"age": "dwadzieścia"`, ale wtedy
+  `getEnumConstants()` zwraca `null`. Bez warunku `isEnum()` handler sam rzucałby
+  `NullPointerException` i klient dostawałby pustą odpowiedź zamiast `400`.
+  Pozostałe błędy typu kończą się ogólnym „Nieprawidłowy format żądania”;
+  pilnuje tego test `saveTeacherInvalidAgeTypeReturns400`. Możliwe rozszerzenie:
+  także dla nich zwracać pole w `errors` z ogólnym komunikatem.
+
+Na classpath są dwa Jacksony: 3 (`tools.jackson`, używany przez Spring Boota 4)
+i 2 (`com.fasterxml`, zależność przechodnia). `InvalidFormatException` musi
+pochodzić z `tools.jackson.databind.exc` — wersja z `com.fasterxml` nigdy nie
+pasowałaby do `instanceof`. Tutaj błąd wyłapuje już kompilator, bo Jackson 2
+nie ma `getPropertyName()`.
+
 ### Transakcje
 
 Metody modyfikujące relacje są oznaczone `@Transactional`. Encje wczytane w obrębie
@@ -372,7 +406,7 @@ Wszystkie wymagania zadania są zrealizowane. Poniższe punkty to dopracowanie.
 
 ### 1. Testy
 
-Razem 57 testów w czterech warstwach. Każdy z nich został sprawdzony mutacją kodu
+Razem 58 testów w czterech warstwach. Każdy z nich został sprawdzony mutacją kodu
 produkcyjnego — zepsuciem jednej linii i upewnieniem się, że test faktycznie pada.
 
 ```bash
@@ -417,7 +451,7 @@ cienkie przekazania do repozytorium, sprawdzone w testach webowych i w testach
 repozytoriów.
 
 **Testy warstwy webowej — zrobione.** `StudentControllerTest` (12)
-i `TeacherControllerTest` (13): `@WebMvcTest` z `MockMvcTester`, serwisy
+i `TeacherControllerTest` (14): `@WebMvcTest` z `MockMvcTester`, serwisy
 podstawione przez `@MockitoBean`. Pokrywają wszystkie endpointy obu kontrolerów,
 kody odpowiedzi i oba kształty błędu z `GlobalExceptionHandler`:
 
@@ -429,7 +463,8 @@ kody odpowiedzi i oba kształty błędu z `GlobalExceptionHandler`:
 | edycja poprawnymi danymi | `200` z pełnym JSON-em zasobu |
 | usunięcie | `204` z pustym ciałem |
 | niepoprawny JSON | `400` z polem `message` |
-| nieznana wartość enuma `subject` (tylko nauczyciele) | `400` z polem `message` |
+| nieznana wartość enuma `subject` (tylko nauczyciele) | `400` z `errors.subject` i listą dozwolonych wartości |
+| tekst w polu liczbowym `age` (tylko nauczyciele) | `400` z polem `message` |
 | lista | `200` z `content`, `totalElements` i `totalPages` |
 | żądanie bez parametrów | `Pageable` i puste napisy z wartości domyślnych |
 
@@ -533,11 +568,5 @@ wołanej przez `this` nie miałaby żadnego skutku.
   (na przykład lista bez parametrów ścieżki nie zwróci `404`). Do sprawdzenia
   eksperymentem, czy jawne `@ApiResponse` na metodzie zastępuje doklejone
   odpowiedzi, czy tylko dopisuje swoje.
-- Komunikat przy nieznanej wartości enuma. `"subject": "ASTROLOGIA"` odrzuca już
-  Jackson (`HttpMessageNotReadableException`), zanim ruszy walidacja, więc klient
-  dostaje ogólne „Nieprawidłowy format żądania” — bez nazwy pola i bez listy
-  dozwolonych wartości. Usprawnienie: w handlerze sprawdzić `ex.getCause()`
-  i dla `InvalidFormatException` zwrócić pole oraz wartości enuma. Obecne zachowanie
-  opisuje test `saveTeacherInvalidSubjectReturns400` — po zmianie trzeba go dostosować.
 - `toString()` na encjach (tylko pola proste, bez kolekcji) — komunikaty porażek
   w testach pokazują dziś `Student@119c745c` zamiast danych.

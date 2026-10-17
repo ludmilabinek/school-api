@@ -98,6 +98,37 @@ class TeacherControllerTest {
           "subject": "ASTROLOGIA"
         }
         """;
+        String message = "niedozwolona wartość ASTROLOGIA, dozwolone: MATEMATYKA, FIZYKA, GEOGRAFIA";
+
+        //when
+        MvcTestResult result = mvc.post()
+                .uri("/api/teachers")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(body)
+                .exchange();
+
+        //then
+        assertThat(result)
+                .hasStatus(HttpStatus.BAD_REQUEST)
+                .bodyJson()
+                .extractingPath("$.errors.subject")
+                .asString()
+                .isEqualTo(message);
+        verifyNoInteractions(teacherService);
+    }
+
+    @Test
+    void saveTeacherInvalidAgeTypeReturns400() {
+        //given
+        String body = """
+        {
+          "firstName": "Jane",
+          "lastName": "Smith",
+          "age": "dwadzieścia",
+          "email": "jane.smith@example.com",
+          "subject": "FIZYKA"
+        }
+        """;
         String message = "Nieprawidłowy format żądania";
 
         //when
